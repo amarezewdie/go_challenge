@@ -14,6 +14,7 @@ import (
 	"github.com/izymalhaw/go-crud/yishakterefe/internal/config"
 	customlogger "github.com/izymalhaw/go-crud/yishakterefe/internal/core/logger"
 	"github.com/izymalhaw/go-crud/yishakterefe/internal/repository"
+	"github.com/izymalhaw/go-crud/yishakterefe/internal/services/auth"
 	person_service "github.com/izymalhaw/go-crud/yishakterefe/internal/services/person"
 )
 
@@ -22,20 +23,19 @@ const (
 )
 
 func main() {
-	// Load from .env file before reading ENV vars
+	// Load .env variables
 	_ = godotenv.Load()
 
-	// Load config with proper error logging
 	cfg, err := config.NewConfig()
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
 
-	// Initialize logger
+	// Logger
 	logger := customlogger.NewLogger(cfg.Env, cfg.LogLevel, version)
 
-	// Initialize PostgreSQL database connection
+	// DB connection
 	db, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
@@ -43,24 +43,31 @@ func main() {
 	}
 	defer db.Close()
 
-	// Configure connection pool
+	// DB pool config
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	// Verify database connection
+	// Ping DB
 	if err = db.Ping(); err != nil {
 		logger.Error("failed to ping database", "error", err)
 		os.Exit(1)
 	}
 	logger.Info("database connected successfully")
 
-	// Initialize repository and service
+	// Initialize services
 	store := repository.NewPostgresUserRepo(db)
 	personService := person_service.NewPersonSvc(store)
 
-	// Start server
-	webSrv := handlers.NewApp(cfg.Port, personService, logger)
+	//  Initialize auth service
+	authService := auth.NewAuthService(cfg.JWTSecret)
+
+	// Initialize auth handler
+	authHandler := handlers.NewAuthHandler(authService)
+
+	//  Pass all to handler.NewApp
+	webSrv := handlers.NewApp(cfg.Port , personService, authService, authHandler, logger)
+
 	logger.Info("server running")
 	webSrv.Run()
 }

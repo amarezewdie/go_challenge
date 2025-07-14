@@ -12,9 +12,11 @@ import (
 // @description Mereb Challenge done by @izymalhaw
 // @host localhost:8080
 // @BasePath /api/v1
-
 func (server *Server) Routes() {
-	//person routes
+	// Auth route
+	server.router.HandleFunc("POST /login", server.authHandler.Login())
+
+	// Person routes
 	server.router.HandleFunc("POST /api/v1/person/create", server.CreatePerson())
 	server.router.HandleFunc("GET /api/v1/person", server.GetPersons())
 	server.router.HandleFunc("PUT /api/v1/person/{personId}", server.UpdatePerson())
@@ -22,6 +24,5 @@ func (server *Server) Routes() {
 	server.router.HandleFunc("DELETE /api/v1/person/{personId}", server.DeletePerson())
 
 	server.router.HandleFunc("/", http.HandlerFunc(server.HandleNotFound))
-
 	server.router.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 }

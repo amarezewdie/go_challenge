@@ -26,12 +26,22 @@ type Config struct {
 	DBMaxOpenConns int
 	DBMaxIdleConns int
 	DBMaxLifetime  time.Duration
+	JWTSecret      string
 }
 
 var Environment = map[string]string{
 	"dev":  "development",
 	"prod": "production",
 }
+
+func NewConfig() (*Config, error) {
+	cfg := &Config{}
+	if err := cfg.loadEnv(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
 
 func (c *Config) loadEnv() error {
 	// Load environment variables from .env file
@@ -94,13 +104,11 @@ func (c *Config) loadEnv() error {
 		}
 	}
 
-	return nil
-}
-
-func NewConfig() (*Config, error) {
-	config := &Config{}
-	if err := config.loadEnv(); err != nil {
-		return nil, err
+	// ✅ Fix JWT_SECRET logic before return
+	c.JWTSecret = os.Getenv("JWT_SECRET")
+	if c.JWTSecret == "" {
+		return errors.New("JWT_SECRET not set")
 	}
-	return config, nil
+
+	return nil
 }
